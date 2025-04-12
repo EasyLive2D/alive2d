@@ -17,29 +17,8 @@
 
 using namespace Csm;
 
-#ifdef CSM_TARGET_ANDROID_ES2
-#include <JE.h>
-#endif
-
-csmByte* LAppPal::LoadFileAsBytes(const std::string& filePath, csmSizeInt* outSize)
+csmByte* LAppPal::LoadFileAsBytes(const std::string filePath, csmSizeInt* outSize)
 {
-    char* buf;
-#ifdef CSM_TARGET_ANDROID_ES2
-    JNIEnv *env;
-    g_VM->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
-    jbyteArray arr = (jbyteArray) env->CallStaticObjectMethod(g_live2dClass,
-                                                              g_loadFileMethod,
-                                                        env->NewStringUTF(filePath.c_str()));
-    if (!arr) {
-        return nullptr;
-    }
-    jsize size = env->GetArrayLength(arr);
-    if (outSize) {
-        *outSize = size;
-    }
-    buf = new char[size];
-    env->GetByteArrayRegion(arr, 0, size, reinterpret_cast<jbyte*>(buf));
-#else
     //filePath;//
     const char* pathStr = filePath.c_str();
     std::filesystem::path path = std::filesystem::u8path(filePath);
@@ -51,13 +30,13 @@ csmByte* LAppPal::LoadFileAsBytes(const std::string& filePath, csmSizeInt* outSi
         if (size == 0)
         {
             Info("Stat succeeded but file size is zero. path:%s", pathStr);
-            return nullptr;
+            return NULL;
         }
     }
     else
     {
         Info("Stat failed. errno:%d path:%s", errno, pathStr);
-        return nullptr;
+        return NULL;
     }
 
     std::fstream file;
@@ -65,17 +44,18 @@ csmByte* LAppPal::LoadFileAsBytes(const std::string& filePath, csmSizeInt* outSi
     if (!file.is_open())
     {
         Info("File open failed. path:%s", pathStr);
-        return nullptr;
+        return NULL;
     }
 
     char* buf = new char[size];
     file.read(buf, size);
     file.close();
+
     if (outSize)
     {
         *outSize = static_cast<unsigned int>(size);
     }
-#endif
+
     return reinterpret_cast<csmByte*>(buf);
 }
 

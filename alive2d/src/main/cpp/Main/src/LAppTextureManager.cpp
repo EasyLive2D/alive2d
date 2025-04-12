@@ -22,7 +22,7 @@ LAppTextureManager::~LAppTextureManager()
     ReleaseTextures();
 }
 
-LAppTextureManager::TextureInfo* LAppTextureManager::CreateTextureFromPngFile(const std::string& fileName)
+LAppTextureManager::TextureInfo* LAppTextureManager::CreateTextureFromPngFile(std::string fileName)
 {
     //search loaded texture already.
     for (Csm::csmUint32 i = 0; i < _textures.GetSize(); i++)

@@ -42,24 +42,24 @@ namespace
         Info("delete buffer: %s", path);
         LAppPal::ReleaseBytes(buffer);
     }
-}
 
-class FakeMotion : public ACubismMotion
-{
-protected:
-    void DoUpdateParameters(CubismModel *model, csmFloat32 userTimeSeconds, csmFloat32 weight,
-                            CubismMotionQueueEntry *motionQueueEntry) override
+    class FakeMotion : public ACubismMotion
     {
-    }
+    protected:
+        void DoUpdateParameters(CubismModel* model, csmFloat32 userTimeSeconds, csmFloat32 weight,
+            CubismMotionQueueEntry* motionQueueEntry) override
+        {
+        }
 
-public:
-    FakeMotion() = default;
-};
+    public:
+        FakeMotion() = default;
+    };
+}
 
 LAppModel::LAppModel()
     : CubismUserModel(), _modelSetting(nullptr), _autoBlink(true), _autoBreath(true),
       _matrixManager(), _tmpOrderedDrawIndices(nullptr), _defaultParameterValues(nullptr),
-      _parameterValues(nullptr), _parameterCount(0), _clearMotionFlag(false)
+      _parameterValues(nullptr), _parameterCount(0), _clearMotionFlag(false), _lastFrame(0.0), _currentFrame(0.0)
 {
     _mocConsistency = MocConsistencyValidationEnable;
 
@@ -86,7 +86,7 @@ LAppModel::~LAppModel()
     delete[] _tmpOrderedDrawIndices;
 }
 
-void LAppModel::LoadAssets(const csmChar *fileName)
+void LAppModel::LoadModelJson(const csmChar *fileName)
 {
     // linux 下不支持对 "XXX/XXX.model.json/../" 的解析
     // 因此改用 cpp17 的标准库
@@ -272,6 +272,13 @@ void LAppModel::SetupModel(ICubismModelSetting *setting)
     _defaultParameterValues = Live2D::Cubism::Core::csmGetParameterDefaultValues(model);
     _parameterValues = Live2D::Cubism::Core::csmGetParameterValues(model);
     _parameterCount = Live2D::Cubism::Core::csmGetParameterCount(model);
+
+    _iParamAngleX = _model->GetParameterIndex(_idParamAngleX);
+    _iParamAngleY = _model->GetParameterIndex(_idParamAngleY);
+    _iParamAngleZ = _model->GetParameterIndex(_idParamAngleZ);
+    _iParamBodyAngleX = _model->GetParameterIndex(_idParamBodyAngleX);
+    _iParamEyeBallX = _model->GetParameterIndex(_idParamEyeBallX);
+    _iParamEyeBallY = _model->GetParameterIndex(_idParamEyeBallY);
 }
 
 void LAppModel::PreloadMotionGroup(const csmChar *group)
@@ -358,10 +365,55 @@ void LAppModel::ReleaseExpressions()
     _expressions.Clear();
 }
 
+bool LAppModel::IsHit(CubismIdHandle drawableId, csmFloat32 pointX, csmFloat32 pointY)
+{
+    const csmInt32 drawIndex = _model->GetDrawableIndex(drawableId);
+
+    if (drawIndex < 0)
+    {
+        return false; // 存在しない場合はfalse
+    }
+
+    const csmInt32    count = _model->GetDrawableVertexCount(drawIndex);
+    const csmFloat32* vertices = _model->GetDrawableVertices(drawIndex);
+
+    csmFloat32 left = vertices[0];
+    csmFloat32 right = vertices[0];
+    csmFloat32 top = vertices[1];
+    csmFloat32 bottom = vertices[1];
+
+    for (csmInt32 j = 1; j < count; ++j)
+    {
+        csmFloat32 x = vertices[Constant::VertexOffset + j * Constant::VertexStep];
+        csmFloat32 y = vertices[Constant::VertexOffset + j * Constant::VertexStep + 1];
+
+        if (x < left)
+        {
+            left = x; // Min x
+        }
+
+        if (x > right)
+        {
+            right = x; // Max x
+        }
+
+        if (y < top)
+        {
+            top = y; // Min y
+        }
+
+        if (y > bottom)
+        {
+            bottom = y; // Max y
+        }
+    }
+
+    return ((left <= pointX) && (pointX <= right) && (top <= pointY) && (pointY <= bottom));
+}
 void LAppModel::Update()
 {
     _currentFrame = LAppPal::GetCurrentTimePoint();
-    _deltaTimeSeconds = std::min(0.1f, static_cast<float>(_currentFrame - _lastFrame)); // 防止间隔过大导致后续状态异常
+    _deltaTimeSeconds = static_cast<float>(std::min(0.1, _currentFrame - _lastFrame)); // 防止间隔过大导致后续状态异常
     _lastFrame = _currentFrame;
 
     _dragManager->Update(_deltaTimeSeconds);
@@ -372,27 +424,10 @@ void LAppModel::Update()
     csmBool motionUpdated = false;
 
     //-----------------------------------------------------------------
-    if (_clearMotionFlag) 
+    _model->LoadParameters(); // 前回セーブされた状態を
+    if (!_motionManager->IsFinished())
     {
-        _clearMotionFlag = false;
-        _motionManager->StopAllMotions();
-        for (int i = 0; i < _parameterCount; i++)
-        {
-            _parameterValues[i] = _defaultParameterValues[i];
-        }
-        if (_pose)
-        {
-            _pose->Reset(_model);
-        }
-        Info("motion: cleared");
-    }
-    else
-    {
-        _model->LoadParameters(); // 前回セーブされた状態を
-        if (!_motionManager->IsFinished())
-        {
-            motionUpdated = _motionManager->UpdateMotion(_model, _deltaTimeSeconds); // モーションを更新
-        }
+        motionUpdated = _motionManager->UpdateMotion(_model, _deltaTimeSeconds); // モーションを更新
     }
     _model->SaveParameters(); // 状態を保存
     //-----------------------------------------------------------------
@@ -417,16 +452,16 @@ void LAppModel::Update()
 
     // ドラッグによる変化
     // ドラッグによる顔の向きの調整
-    _model->AddParameterValue(_idParamAngleX, _dragX * 30); // -30から30の値を加える
-    _model->AddParameterValue(_idParamAngleY, _dragY * 30);
-    _model->AddParameterValue(_idParamAngleZ, _dragX * _dragY * -30);
+    _model->AddParameterValue(_iParamAngleX, _dragX * 30); // -30から30の値を加える
+    _model->AddParameterValue(_iParamAngleY, _dragY * 30);
+    _model->AddParameterValue(_iParamAngleZ, _dragX * _dragY * -30);
 
     // ドラッグによる体の向きの調整
-    _model->AddParameterValue(_idParamBodyAngleX, _dragX * 10); // -10から10の値を加える
+    _model->AddParameterValue(_iParamBodyAngleX, _dragX * 10); // -10から10の値を加える
 
     // ドラッグによる目の向きの調整
-    _model->AddParameterValue(_idParamEyeBallX, _dragX); // -1から1の値を加える
-    _model->AddParameterValue(_idParamEyeBallY, _dragY);
+    _model->AddParameterValue(_iParamEyeBallX, _dragX); // -1から1の値を加える
+    _model->AddParameterValue(_iParamEyeBallY, _dragY);
 
     // 呼吸など
     if (_autoBreath && _breath != NULL)
@@ -515,8 +550,8 @@ CubismMotionQueueEntryHandle LAppModel::StartMotion(const csmChar *group, csmInt
     {
         motion->group = group;
         motion->no = no;
-        motion->onStartedCallee = onStartedCallee;
-        motion->onFinishedCallee = onFinishedCallee;
+        motion->SetBeganMotionCustomData(onStartedCallee);
+        motion->SetFinishedMotionCustomData(onFinishedCallee);
         motion->SetBeganMotionHandler(onStartMotionHandler);
         motion->SetFinishedMotionHandler(onFinishedMotionHandler);
     }
@@ -530,8 +565,8 @@ handler_label:
         FakeMotion fakeMotion;
         fakeMotion.group = group;
         fakeMotion.no = no;
-        fakeMotion.onStartedCallee = onStartedCallee;
-        fakeMotion.onFinishedCallee = onFinishedCallee;
+        fakeMotion.SetBeganMotionCustomData(onStartedCallee);
+        fakeMotion.SetFinishedMotionCustomData(onFinishedCallee);
         if (onStartMotionHandler)
         {
             onStartMotionHandler(&fakeMotion);
@@ -641,9 +676,14 @@ void LAppModel::SetExpression(const csmChar *expressionID)
     }
 }
 
-void LAppModel::SetRandomExpression(void *callee, void (*callback)(void *, const char *))
+std::string LAppModel::SetRandomExpression()
 {
-    csmInt32 no = rand() % _expressions.GetSize();
+    const int size = _expressions.GetSize();
+    if (size == 0)
+    {
+        return "";
+    }
+    csmInt32 no = rand() % size;
     csmMap<csmString, ACubismMotion *>::const_iterator map_ite;
     csmInt32 i = 0;
     for (map_ite = _expressions.Begin(); map_ite != _expressions.End(); map_ite++)
@@ -652,14 +692,11 @@ void LAppModel::SetRandomExpression(void *callee, void (*callback)(void *, const
         {
             csmString name = (*map_ite).First;
             SetExpression(name.GetRawString());
-            if (callee && callback)
-            {
-                callback(callee, name.GetRawString());
-            }
-            return;
+            return name.GetRawString();
         }
         i++;
     }
+    return "";
 }
 
 void LAppModel::ReloadRenderer()
@@ -744,13 +781,23 @@ bool LAppModel::IsMotionFinished()
 void LAppModel::SetParameterValue(const char *paramId, float value, float weight)
 {
     const Csm::CubismId *paramHanle = CubismFramework::GetIdManager()->GetId(paramId);
-    _model->SetParameterValue(paramHanle, value, weight);
+    _model->SetAndSaveParameterValue(paramHanle, value, weight);
+}
+
+void LAppModel::SetIndexParamValue(int index, float value, float weight)
+{
+    _model->SetAndSaveParameterValue(index, value, weight);
 }
 
 void LAppModel::AddParameterValue(const char *paramId, float value)
 {
     const Csm::CubismId *paramHanle = CubismFramework::GetIdManager()->GetId(paramId);
-    _model->AddParameterValue(paramHanle, value);
+    _model->AddAndSaveParameterValue(paramHanle, value);
+}
+
+void LAppModel::AddIndexParamValue(int index, float value)
+{
+    _model->AddAndSaveParameterValue(index, value);
 }
 
 void LAppModel::SetAutoBreathEnable(bool enable)
@@ -969,12 +1016,53 @@ void LAppModel::Rotate(float deg)
     _matrixManager.Rotate(deg);
 }
 
-void LAppModel::ClearMotions()
+void LAppModel::StopAllMotions()
 {
-    _clearMotionFlag = true;
+    _motionManager->StopAllMotions();
+}
+
+void LAppModel::ResetParameters()
+{
+    for (int i = 0; i < _parameterCount; i++)
+    {
+        _parameterValues[i] = _defaultParameterValues[i];
+    }
+    _model->SaveParameters();
+}
+
+void LAppModel::ResetPose()
+{
+    if (_pose)
+    {
+        _pose->Reset(_model);
+    }
 }
 
 void LAppModel::ResetExpression()
 {
     _expressionManager->StopAllMotions();
+}
+
+void LAppModel::GetExpressionIds(void *collector, void (*callback)(void *collector, const char *expId))
+{
+    const int count = _modelSetting->GetExpressionCount();
+    for (int i = 0; i < count; i++)
+    {
+        callback(collector, _modelSetting->GetExpressionName(i));
+    }
+}
+
+void LAppModel::GetMotionGroups(void *collector, void (*callback)(void *collector, const char *groupName, int count))
+{
+    const int count = _modelSetting->GetMotionGroupCount();
+    for (int i = 0; i < count; i++)
+    {
+        const char* group = _modelSetting->GetMotionGroupName(i);
+        callback(collector, group, _modelSetting->GetMotionCount(group));
+    }
+}
+
+const char* LAppModel::GetSoundPath(const char *group, int index)
+{
+    return _modelSetting->GetMotionSoundFileName(group, index);
 }

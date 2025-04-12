@@ -40,7 +40,7 @@ public:
      * @brief model3.jsonが置かれたディレクトリとファイルパスからモデルを生成する
      *
      */
-    void LoadAssets(const Csm::csmChar* fileName);
+    void LoadModelJson(const Csm::csmChar* fileName);
 
     /**
      * @brief レンダラを再構築する
@@ -105,7 +105,7 @@ public:
      * @brief   ランダムに選ばれた表情モーションをセットする
      *
      */
-    void SetRandomExpression(void* callee = nullptr, void (*callback)(void*, const char*) = nullptr);
+    std::string SetRandomExpression();
 
     /**
      * @brief   イベントの発火を受け取る
@@ -142,7 +142,11 @@ public:
 
     void SetParameterValue(const char* paramId, float value, float weight = 1.0f);
 
+    void SetIndexParamValue(int index, float value, float weight = 1.0f);
+
     void AddParameterValue(const char* paramId, float value);
+
+    void AddIndexParamValue(int index, float value);
 
     void SetAutoBreathEnable(bool enable);
 
@@ -188,9 +192,19 @@ public:
 
     void Rotate(float deg);
 
-    void ClearMotions();
+    void StopAllMotions();
+
+    void ResetParameters();
+
+    void ResetPose();
 
     void ResetExpression();
+
+    void GetExpressionIds(void* collector, void(*callback)(void* collector, const char* expId));
+
+    void GetMotionGroups(void* collector, void(*callback)(void* collector, const char* groupName, int count));
+
+    const char* GetSoundPath(const char* group, int index);
 
 protected:
     /**
@@ -237,6 +251,8 @@ private:
      */
     void ReleaseExpressions();
 
+    bool IsHit(Csm::CubismIdHandle drawableId, float pointX, float pointY) override;
+
     Csm::ICubismModelSetting* _modelSetting; ///< モデルセッティング情報
     Csm::csmString _modelHomeDir; ///< モデルセッティングが置かれたディレクトリ
     Csm::csmVector<Csm::CubismIdHandle> _eyeBlinkIds; ///< モデルに設定されたまばたき機能用パラメータID
@@ -251,6 +267,13 @@ private:
     const Csm::CubismId* _idParamEyeBallY; ///< パラメータID: ParamEyeBallXY
     // 附加id，详见 https://docs.live2d.com/en/cubism-editor-manual/standard-parameter-list/
 
+    int _iParamAngleX;
+    int _iParamAngleY;
+    int _iParamAngleZ;
+    int _iParamBodyAngleX;
+    int _iParamEyeBallX;
+    int _iParamEyeBallY;
+
     LAppTextureManager _textureManager; ///< 纹理管理器
 
     Csm::Rendering::CubismOffscreenSurface_OpenGLES2 _renderBuffer; ///< フレームバッファ以外の描画先
@@ -264,7 +287,7 @@ private:
 
     double _currentFrame;
     double _lastFrame;
-    double _deltaTimeSeconds;
+    float _deltaTimeSeconds;
 
     // used to clear motion effect
     const float* _defaultParameterValues;

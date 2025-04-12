@@ -74,7 +74,7 @@ public:
     * @param[in] fileName  読み込む画像ファイルパス名
     * @return 画像情報。読み込み失敗時はNULLを返す
     */
-    TextureInfo* CreateTextureFromPngFile(const std::string& fileName);
+    TextureInfo* CreateTextureFromPngFile(std::string fileName);
 
     /**
     * @brief 画像の解放

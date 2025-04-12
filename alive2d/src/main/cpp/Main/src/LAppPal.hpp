@@ -28,7 +28,7 @@ public:
     * @param[out]  outSize     ファイルサイズ
     * @return                  バイトデータ
     */
-    static Csm::csmByte* LoadFileAsBytes(const std::string& filePath, Csm::csmSizeInt* outSize);
+    static Csm::csmByte* LoadFileAsBytes(const std::string filePath, Csm::csmSizeInt* outSize);
 
 
     /**

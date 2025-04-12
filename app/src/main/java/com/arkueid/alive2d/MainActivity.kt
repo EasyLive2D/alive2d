@@ -1,95 +1,83 @@
 package com.arkueid.alive2d
 
-import android.content.Context
-import android.opengl.GLSurfaceView
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
-import android.util.Log
-import android.view.SurfaceHolder
+import android.os.Environment
+import android.widget.SimpleAdapter
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import javax.microedition.khronos.egl.EGLConfig
-import javax.microedition.khronos.opengles.GL10
+import com.arkueid.alive2d.databinding.ActivityMainBinding
+import java.io.File
 
-class Live2DSurfaceView(context: Context) : GLSurfaceView(context) {
-    override fun surfaceDestroyed(holder: SurfaceHolder) {
-        super.surfaceDestroyed(holder)
-    }
-}
-
-class Live2DRenderer : GLSurfaceView.Renderer {
-    companion object {
-        private const val TAG = "MainActivity"
-    }
-
-    lateinit var model: LAppModel
-    override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
-        model = LAppModel.obtain().apply {
-            loadModelJson("assets://Mao/Mao.model3.json")
-        }
-    }
-
-    override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
-        model.resize(width, height)
-    }
-
-    override fun onDrawFrame(gl: GL10?) {
-        gl?.glClearColor(0.0f, 0.0f, 0.0f, 0.0f)
-        gl?.glClear(GL10.GL_COLOR_BUFFER_BIT)
-        model.update()
-        model.draw()
-    }
-
-}
 
 class MainActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "MainActivity"
+        private const val REQUEST_READ_EXTERNAL_STORAGE = 0;
     }
 
-    lateinit var glSurfaceView: Live2DSurfaceView
-    lateinit var renderer: Live2DRenderer
+    lateinit var modelListData: MutableList<Map<String, String>>
+
+    lateinit var binding: ActivityMainBinding
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        glSurfaceView = Live2DSurfaceView(this)
-        glSurfaceView.setEGLContextClientVersion(2)
-        renderer = Live2DRenderer()
-        glSurfaceView.setRenderer(renderer)
-        setContentView(glSurfaceView)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        glSurfaceView.setOnClickListener {
-            it.post {
-                renderer.model.startRandomMotion({ group, no ->
-                    Log.e(TAG, "start motion: $group $no")
-                }, {
-                    Log.e(TAG, "finish motion")
-                })
+        if (PackageManager.PERMISSION_GRANTED != checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE)) {
+            requestPermissions(
+                arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE),
+                REQUEST_READ_EXTERNAL_STORAGE
+            );
+        } else {
+            loadModels()
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_READ_EXTERNAL_STORAGE) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                loadModels()
+            } else {
+                Toast.makeText(this, "无法读取外部储存", Toast.LENGTH_LONG).show();
             }
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        Live2D.init(applicationContext)
-    }
+    private fun loadModels() {
+        val dir = File(Environment.getExternalStorageDirectory(), "A/Live2D")
+        modelListData = mutableListOf()
+        dir.list()?.forEach { subDirName ->
+            val f = File(dir, subDirName)
+            if (f.isDirectory) {
+                val modelJsonName = f.list()?.firstOrNull { it.endsWith("model3.json") }
+                if (modelJsonName != null) {
+                    modelListData.add(
+                        mapOf(
+                            Pair("name", subDirName),
+                            Pair("jsonPath", File(f, modelJsonName).absolutePath)
+                        )
+                    )
+                }
+            }
+        }
+        val adapter = SimpleAdapter(
+            this, modelListData, R.layout.item_model,
+            arrayOf("name", "jsonPath"), intArrayOf(R.id.name, R.id.jsonPath)
+        )
+        binding.modelList.adapter = adapter
 
-    override fun onResume() {
-        super.onResume()
-        glSurfaceView.onResume()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        glSurfaceView.onPause()
-        glSurfaceView.post { // 防止最后一帧还未画完就被释放
-            renderer.model.recycle()
+        binding.modelList.setOnItemClickListener { parent, view, position, id ->
+            val intent = Intent(this@MainActivity, Live2DScene::class.java)
+            intent.putExtra("jsonPath", modelListData[position]["jsonPath"])
+            startActivity(intent)
         }
     }
 
-    override fun onStop() {
-        super.onStop()
-        Live2D.dispose()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-    }
 }
