@@ -1169,8 +1169,7 @@ void Model::ResetExpression()
 
 void Model::SetDefaultExpression(const char *expressionId)
 {
-    // TODO should be expressionId != nullptr
-    if (expressionId == nullptr || _expressions.IsExist(expressionId))
+    if (expressionId != nullptr || _expressions.IsExist(expressionId))
     {
         _defaultExpressionId = expressionId;
         Info("set default expression: [%s]", expressionId);
