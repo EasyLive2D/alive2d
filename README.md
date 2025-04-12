@@ -19,3 +19,11 @@ ndk {
 //    abiFilters.add("x86_64")
 }
 ```
+
+Live2D 模型文件存放于：`A/Live2D`
+
+示例：
+
+![preview1](./docs/Snipaste_2025-04-12_12-09-58.png)
+
+![preview2](./docs/Snipaste_2025-04-12_12-10-34.png)
