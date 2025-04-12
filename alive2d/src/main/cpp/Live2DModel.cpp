@@ -11,31 +11,30 @@
 static void DefaultStartCallback(Csm::ACubismMotion *motion) {
     if (motion->GetBeganMotionCustomData() == nullptr) return;
     JNIEnv *env;
-    g_VM->AttachCurrentThread(&env, nullptr);
+
+    g_VM->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
 
     auto on_start_callback = static_cast<jobject>(motion->GetBeganMotionCustomData());
 
     jstring group_str = env->NewStringUTF(motion->group.c_str());
-    jobject motion_no = env->CallObjectMethod(g_integerClass, g_integerValueOfMethod,
+    jobject motion_no = env->CallStaticObjectMethod(g_integerClass, g_integerValueOfMethod,
                                               motion->no);
     env->CallVoidMethod(on_start_callback, g_biConsumerAcceptMethod, group_str, motion_no);
     env->DeleteLocalRef(group_str);
     env->DeleteLocalRef(motion_no);
 
     env->DeleteGlobalRef(on_start_callback);
-
-    g_VM->DetachCurrentThread();
 }
 
 static void DefaultFinishCallback(Csm::ACubismMotion *motion) {
     if (motion->GetFinishedMotionCustomData() == nullptr) return;
 
     JNIEnv *env;
-    g_VM->AttachCurrentThread(&env, nullptr);
+    g_VM->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
 
     auto on_finish_callback = static_cast<jobject>(motion->GetFinishedMotionCustomData());
     jstring group_str = env->NewStringUTF(motion->group.c_str());
-    jobject motion_no = env->CallObjectMethod(g_integerClass, g_integerValueOfMethod,
+    jobject motion_no = env->CallStaticObjectMethod(g_integerClass, g_integerValueOfMethod,
                                               motion->no);
 
     env->CallVoidMethod(on_finish_callback, g_biConsumerAcceptMethod, group_str, motion_no);
@@ -43,8 +42,6 @@ static void DefaultFinishCallback(Csm::ACubismMotion *motion) {
     env->DeleteLocalRef(motion_no);
 
     env->DeleteGlobalRef(on_finish_callback);
-
-    g_VM->DetachCurrentThread();
 }
 
 

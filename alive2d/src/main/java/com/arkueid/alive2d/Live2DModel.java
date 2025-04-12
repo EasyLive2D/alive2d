@@ -274,8 +274,36 @@ public class Live2DModel {
         nativeStartMotion(nativeHandle, group, no, priority, onStart, onFinish);
     }
 
+    public void startMotion(String group, int no, int priority, BiConsumer<String, Integer> onStart) {
+        nativeStartMotion(nativeHandle, group, no, priority, onStart, null);
+    }
+
+    public void startMotion(String group, int no, int priority) {
+        nativeStartMotion(nativeHandle, group, no, priority, null, null);
+    }
+
+    public void startMotion(String group, int no) {
+        nativeStartMotion(nativeHandle, group, no, MotionPriority.FORCE, null, null);
+    }
+
     public void startRandomMotion(String group, int priority, BiConsumer<String, Integer> onStart, BiConsumer<String, Integer> onFinish) {
         nativeStartRandomMotion(nativeHandle, group, priority, onStart, onFinish);
+    }
+
+    public void startRandomMotion(String group, int priority, BiConsumer<String, Integer> onStart) {
+        nativeStartRandomMotion(nativeHandle, group, priority, onStart, null);
+    }
+
+    public void startRandomMotion(String group, int priority) {
+        nativeStartRandomMotion(nativeHandle, group, priority, null, null);
+    }
+
+    public void startRandomMotion(String group) {
+        nativeStartRandomMotion(nativeHandle, group, MotionPriority.FORCE, null, null);
+    }
+
+    public void startRandomMotion() {
+        nativeStartRandomMotion(nativeHandle, null, MotionPriority.FORCE, null, null);
     }
 
     public boolean isMotionFinished() {
@@ -294,8 +322,16 @@ public class Live2DModel {
         return nativeHitPart(nativeHandle, x, y, topOnly);
     }
 
+    public List<String> hitPart(float x, float y) {
+        return hitPart(x, y, false);
+    }
+
     public List<String> hitDrawable(float x, float y, boolean topOnly) {
         return nativeHitDrawable(nativeHandle, x, y, topOnly);
+    }
+
+    public List<String> hitDrawable(float x, float y) {
+        return hitDrawable(x, y, false);
     }
 
     public void drag(float x, float y) {

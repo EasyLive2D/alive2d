@@ -17,9 +17,9 @@ class MainActivity : AppCompatActivity() {
         private const val REQUEST_READ_EXTERNAL_STORAGE = 0;
     }
 
-    lateinit var modelListData: MutableList<Map<String, String>>
+    private lateinit var modelListData: MutableList<Map<String, String>>
 
-    lateinit var binding: ActivityMainBinding
+    private lateinit var binding: ActivityMainBinding
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)

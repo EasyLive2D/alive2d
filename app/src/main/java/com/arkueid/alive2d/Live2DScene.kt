@@ -3,11 +3,14 @@ package com.arkueid.alive2d
 import android.annotation.SuppressLint
 import android.opengl.GLSurfaceView.Renderer
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
 import com.arkueid.alive2d.databinding.ActivityLive2DsceneBinding
+import kotlinx.coroutines.launch
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -84,6 +87,13 @@ class Live2DScene : AppCompatActivity() {
         binding.glSurfaceView.run {
             setEGLContextClientVersion(2)
             setRenderer(renderer)
+            setOnClickListener {
+                model.startRandomMotion(null, MotionPriority.FORCE, { group, no ->
+                    Log.d("MotionStart", "Motion Started: $group $no")
+                }, { group, no ->
+                    Log.d("MotionFinish", "Motion Finished: $group $no")
+                })
+            }
         }
     }
 
