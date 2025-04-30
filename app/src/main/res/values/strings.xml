@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">app</string>
+    <string name="expression">表情</string>
+    <string name="recover_pose">恢复姿势</string>
+</resources>

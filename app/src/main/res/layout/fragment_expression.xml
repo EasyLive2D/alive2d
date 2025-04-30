@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical">
+
+    <TextView
+        android:id="@+id/name"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:text="@string/expression"
+        android:textColor="@color/design_default_color_primary"
+        android:layout_margin="10dp"/>
+
+    <Switch
+        android:id="@+id/active"
+        android:layout_width="127dp"
+        android:layout_height="17dp"
+        android:layout_weight="1"
+        tools:ignore="UseSwitchCompatOrMaterialXml" />
+</LinearLayout>
