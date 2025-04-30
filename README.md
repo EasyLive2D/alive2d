@@ -14,7 +14,7 @@ ndk {
 }
 ```
 
-Live2D 模型文件存放于：
+Live2D Model are stored as following：
 ```kotlin
 val dir = File(Environment.getExternalStorageDirectory(), "A/Live2D")
 ```
